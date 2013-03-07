@@ -87,3 +87,8 @@
 (sort-strings *test* "для")
 
 (relevence "для" "предположим, для примера, что вы пишете программу для")
+
+;; Определить TF
+
+(defun tf (word page)
+  (/ (relevance
