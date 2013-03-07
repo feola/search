@@ -68,11 +68,11 @@
 ;; tests
 
 (defparameter *test*
-  '("предположим, для примера, что вы пишете программу для подсчета релевантости"
+  '("предположим, для примера, что вы про пишете программу для подсчета релевантости"
     "для того чтобы ее правильно написать"
     "программа номер один и программа номер два"))
 
-(defparameter *query-string* "для програм")
+(defparameter *query-string* "для про")
 
 (defparameter *search-words* (get-search-words *query-string*))
 
@@ -86,10 +86,6 @@
               *test*)
       #'(lambda (a b)
           (> (car a) (car b))))
-
-(sort-strings *test* "для")
-
-(relevence "для" "предположим, для примера, что вы пишете программу для")
 
 ;; Определить TF
 
@@ -121,10 +117,26 @@
              ))
      (alexandria:read-file-into-string file)))))
 
-(word-list "habr/post171335.txt")
 ;; преобразовать файл (страницу) в список слов
+
+(defparameter *tf* (make-hash-table :test #'equal))
+
+(defun word-hash-tf (file)
+  (mapcar #'(lambda (x)
+              (setf
+               (gethash x *tf*)
+               (/ (car (relevance x
+                                  (format nil "~{~A~^ ~}" (word-list file))))
+                  (length (word-list file)))))
+              (word-list file)))
+
+
+(length (word-list "habr/post171335.txt"))
+
+(maphash #'(lambda (k v) (format t "~a => ~a~%" k v)) *tf*)
+
+(word-hash-tf "habr/post171335.txt")
 
 ;; создать хеш-таблицу, и добавить в неё слова и частоту их встречаемости
 ;; определить количество слов в файле и преобразовать хеш таблицу так, чтобы
 ;; каждому слову соответствовало его значение tf
-
