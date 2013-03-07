@@ -1,3 +1,6 @@
+(require 'split-sequence)
+(require 'alexandria)
+
 (defun recur-files (path)
   ;; получаем список файлов и поддиректорий
   (let ((files (directory (merge-pathnames path "*.*")))
@@ -90,5 +93,38 @@
 
 ;; Определить TF
 
-(defun tf (word page)
-  (/ (relevance
+(defun word-list (file)
+  (mapcar
+   #'(lambda (x)
+       (string-downcase
+        (string-trim '(#\Space #\Tab #\Newline) x)))
+   (remove-if
+    #'(lambda (x)
+        (or (equal x "")))
+    (split-sequence:split-sequence-if
+     #'(lambda (x)
+         (or (equal x #\Space)
+             (equal x #\Newline)
+             (equal x #\()
+             (equal x #\))
+             (equal x #\[)
+             (equal x #\])
+             (equal x #\{)
+             (equal x #\})
+             (equal x #\<)
+             (equal x #\>)
+             (equal x #\,)
+             (equal x #\;)
+             (equal x #\.)
+             (equal x #\:)
+             (equal x #\!)
+             ))
+     (alexandria:read-file-into-string file)))))
+
+(word-list "habr/post171335.txt")
+;; преобразовать файл (страницу) в список слов
+
+;; создать хеш-таблицу, и добавить в неё слова и частоту их встречаемости
+;; определить количество слов в файле и преобразовать хеш таблицу так, чтобы
+;; каждому слову соответствовало его значение tf
+
