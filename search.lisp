@@ -140,7 +140,6 @@
                result)
       result)))
 
-
 (maphash #'(lambda (k v) (format t "~a => ~a~%" k v))
          (word-hash-tf "habr/post171335.txt"))
 
@@ -148,11 +147,14 @@
   "Определить количество файлов, в которых встречается слово"
   (let ((res 0))
     (mapcar #'(lambda (x)
-                (if (search-word-in-page word (alexandria:read-file-into-string x))
-                    (setf res (+ 1 res))))
-     (recur-files path)) res))
+                (if
+                 (search-word-in-page word
+                                      (format nil "~{~A~^ ~}"
+                                              (word-list  x)))
+                 (setf res (+ 1 res))))
+            (recur-files path)) res))
 
-(files-with-word "для" "habr/")
+(files-with-word "ваша" "habr/")
 
 (defun word-hash-idf (file path)
   "Определить idf"
