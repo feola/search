@@ -144,11 +144,31 @@
 (maphash #'(lambda (k v) (format t "~a => ~a~%" k v))
          (word-hash-tf "habr/post171335.txt"))
 
+(defun files-with-word (word path)
+  "Определить количество файлов, в которых встречается слово"
+  (let ((res 0))
+    (mapcar #'(lambda (x)
+                (if (search-word-in-page word (alexandria:read-file-into-string x))
+                    (setf res (+ 1 res))))
+     (recur-files path)) res))
 
-(defun word-hash-idf (word files)
+(files-with-word "для" "habr/")
+
+(defun word-hash-idf (file path)
   "Определить idf"
   ;; создать хеш-таблицу со списком слов с значением idf
-  ;; чтобы найти idf, необходимо разделить общее количество документов
-  ;; на количество документов, в которых встречается слово
+  ;; чтобы найти idf, необходимо разделить общее количество файлов
+  ;; на количество файлов, в которых встречается слово
+  (let ((result (make-hash-table :test #'equal)))
+    (mapcar #'(lambda (x)
+                (setf (gethash x result)
+                      (if (not (equal (files-with-word x path) 0))
+                          (float
+                           (/ (length (recur-files path)) (files-with-word x path))))))
+            (word-list file))
+    result))
+
+(maphash #'(lambda (k v) (format t "~a => ~a~%" k v))
+         (word-hash-idf "habr/post171335.txt" "habr/"))
 
 
