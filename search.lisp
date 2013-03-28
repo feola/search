@@ -42,7 +42,7 @@
               (push file results))))
     (remove-duplicates results)))
 
-(search-in-pages "факультет информационных технологий" (get-all-pages (path "content/")))
+;; (search-in-pages "факультет информационных технологий" (get-all-pages (path "content/")))
 
 (defun relevance (pattern str &optional (start 0) (res 0))
   ;; Релевантность - это число, сопоставленное строке
@@ -76,16 +76,16 @@
 
 (defparameter *search-words* (get-search-words *query-string*))
 
-(sort (mapcar #'(lambda (x)
-                  (cons
-                   (reduce #'+
-                           (mapcar #'(lambda (y)
-                                       (car (relevance y x)))
-                                   *search-words*))
-                   x))
-              *test*)
-      #'(lambda (a b)
-          (> (car a) (car b))))
+;; (sort (mapcar #'(lambda (x)
+;;                   (cons
+;;                    (reduce #'+
+;;                            (mapcar #'(lambda (y)
+;;                                        (car (relevance y x)))
+;;                                    *search-words*))
+;;                    x))
+;;               *test*)
+;;       #'(lambda (a b)
+;;           (> (car a) (car b))))
 
 
 (defun word-list (file)
@@ -140,8 +140,8 @@
                result)
       result)))
 
-(maphash #'(lambda (k v) (format t "~a => ~a~%" k v))
-         (word-hash-tf "habr/post171335.txt"))
+;; (maphash #'(lambda (k v) (format t "~a => ~a~%" k v))
+;;          (word-hash-tf "habr/post171335.txt"))
 
 (defun files-with-word (word path)
   "Определить количество файлов, в которых встречается слово"
@@ -154,21 +154,35 @@
                  (setf res (+ 1 res))))
             (recur-files path)) res))
 
-(files-with-word "ваша" "habr/")
+;; (files-with-word "ваша" "habr/")
 
+;; 1-ый вариант
+;; (defun word-hash-idf (file path)
+;;   "Определить idf"
+;;   ;; создать хеш-таблицу со списком слов с значением idf
+;;   ;; чтобы найти idf, необходимо разделить общее количество файлов
+;;   ;; на количество файлов, в которых встречается слово
+;;   (let ((result (make-hash-table :test #'equal)))
+;;     (mapcar #'(lambda (x)
+;;                 (setf (gethash x result)
+;;                       (if (not (equal (files-with-word x path) 0))
+;;                           (float
+;;                            (/ (length (recur-files path)) (files-with-word x path))))))
+;;             (word-list file))
+;;     result))
+
+;; 2-ой вариант
 (defun word-hash-idf (file path)
   "Определить idf"
   ;; создать хеш-таблицу со списком слов с значением idf
   ;; чтобы найти idf, необходимо разделить общее количество файлов
   ;; на количество файлов, в которых встречается слово
-  (let ((result (make-hash-table :test #'equal)))
-    (mapcar #'(lambda (x)
-                (setf (gethash x result)
-                      (if (not (equal (files-with-word x path) 0))
-                          (float
-                           (/ (length (recur-files path)) (files-with-word x path))))))
-            (word-list file))
-    result))
+  (let ((x (word-hash-tf file)))
+    (maphash #'(lambda (a b)
+                 (setf (gethash a x)
+                       (float
+                        (/ (length (recur-files path)) (files-with-word a path)))))
+                 x) x))
 
 (maphash #'(lambda (k v) (format t "~a => ~a~%" k v))
          (word-hash-idf "habr/post171335.txt" "habr/"))
