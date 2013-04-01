@@ -1,6 +1,11 @@
 (require 'split-sequence)
 (require 'alexandria)
 
+(defmacro read-file (pathname)
+  `(progn
+     (print ,pathname)
+     (alexandria:read-file-into-string ,pathname)))
+
 (defun recur-files (path)
   ;; получаем список файлов и поддиректорий
   (let ((files (directory (merge-pathnames path "*.*")))
@@ -17,30 +22,30 @@
     ;; возвращаем результат
     files))
 
-(defun get-all-pages (path)
-  (let ((all-files (recur-files path)))
-    (loop :for file :in all-files :collect
-       (list (format nil "~A" file)
-             (alexandria:read-file-into-string file)))))
+;; (defun get-all-pages (path)
+;;   (let ((all-files (recur-files path)))
+;;     (loop :for file :in all-files :collect
+;;        (list (format nil "~A" file)
+;;              (read-file file)))))
 
-(defun get-search-words (search-query)
-  (split-sequence:split-sequence #\Space search-query))
+;; (defun get-search-words (search-query)
+;;   (split-sequence:split-sequence #\Space search-query))
 
 (defun search-word-in-page (word page)
   (search word page :test #'string=))
 
-(defun search-in-pages (search-query pages)
-  ;; разбить поисковый запрос на слова
-  (let ((results nil)
-        (words (get-search-words search-query)))
-    (loop :for word :in words :do
-       ;; для каждого слова: взять все страницы
-       (loop :for (file page) :in pages :do
-          ;; для каждой страницы: искать слово
-          (if (search-word-in-page word page)
-              ;; если слово найдено - добавить в результаты
-              (push file results))))
-    (remove-duplicates results)))
+;; (defun search-in-pages (search-query pages)
+;;   ;; разбить поисковый запрос на слова
+;;   (let ((results nil)
+;;         (words (get-search-words search-query)))
+;;     (loop :for word :in words :do
+;;        ;; для каждого слова: взять все страницы
+;;        (loop :for (file page) :in pages :do
+;;           ;; для каждой страницы: искать слово
+;;           (if (search-word-in-page word page)
+;;               ;; если слово найдено - добавить в результаты
+;;               (push file results))))
+;;     (remove-duplicates results)))
 
 ;; (search-in-pages "факультет информационных технологий" (get-all-pages (path "content/")))
 
@@ -74,7 +79,7 @@
 
 (defparameter *query-string* "для про")
 
-(defparameter *search-words* (get-search-words *query-string*))
+;; (defparameter *search-words* (get-search-words *query-string*))
 
 ;; (sort (mapcar #'(lambda (x)
 ;;                   (cons
@@ -117,7 +122,7 @@
              (equal x #\/)
              (equal x #\\)
              ))
-     (alexandria:read-file-into-string file)))))
+     (read-file file)))))
 
 
 (defun word-hash-tf (file)
@@ -129,10 +134,10 @@
     (mapcar #'(lambda (x)
                 (multiple-value-bind (val present)
                     (gethash x result)
-                (if (null present)
-                    (setf (gethash x result) 1)
-                    (setf (gethash x result) (incf val)))))
-          (word-list file))
+                  (if (null present)
+                      (setf (gethash x result) 1)
+                      (setf (gethash x result) (incf val)))))
+            (word-list file))
     (let ((cnt (hash-table-count result)))
       (maphash #'(lambda (k v)
                    (setf (gethash k result)
@@ -152,7 +157,20 @@
                                       (format nil "~{~A~^ ~}"
                                               (word-list  x)))
                  (setf res (+ 1 res))))
-            (recur-files path)) res))
+            (recur-files path))
+    res))
+
+(let ((x (format nil "~{~A~^ ~}"
+                 (word-list "habr/post171335.txt"))))
+  (print (subseq x (- (search "ход" x) 0))))
+
+(let ((x "ход")
+      (y "ход"))
+  (if (and
+       (equal 0 (search x y))
+       (equal (length x) (length y)))
+      t
+      nil))
 
 ;; (files-with-word "ваша" "habr/")
 
@@ -171,20 +189,56 @@
 ;;             (word-list file))
 ;;     result))
 
+
+
+
+
+;; (files-with-word "л" (mapcar #'(lambda (x) ;; список точечных пар (файл . хэш-таблица)
+;;                                       (cons x (word-hash-tf x)))
+;;                                   (recur-files "habr/")))
+
+
 ;; 2-ой вариант
 (defun word-hash-idf (file path)
   "Определить idf"
   ;; создать хеш-таблицу со списком слов с значением idf
   ;; чтобы найти idf, необходимо разделить общее количество файлов
   ;; на количество файлов, в которых встречается слово
-  (let ((x (word-hash-tf file)))
-    (maphash #'(lambda (a b)
-                 (setf (gethash a x)
-                       (float
-                        (/ (length (recur-files path)) (files-with-word a path)))))
-                 x) x))
+  (flet ((files-with-word (word list-of-hash)
+           (let ((res 0))
+             (mapcar #'(lambda (x)
+                         (multiple-value-bind (val present)
+                             (gethash word (cdr x))
+                           (when present
+                             (incf res))))
+                     list-of-hash)
+             res)))
+    (let* ((files (recur-files path))
+           (tfs (mapcar #'(lambda (x) ;; список точечных пар (файл . хэш-таблица)
+                            (cons x (word-hash-tf x)))
+                        files)))
+      ;; проходим по списку точечных пар
+      (mapcar #'(lambda (x)
+                  (let ((file (car x))
+                        (hash (cdr x))
+                        (res  (make-hash-table :test #'equal))) ;; результирующая хэш-таблица IDF для этого файла
+                    (maphash #'(lambda (word tf)
+                                 (setf (gethash word res)
+                                       (float
+                                        (/ (length files)
+                                           (files-with-word word tfs)))))
+                             hash)
+                    (cons file res)))
+              tfs))))
 
-(maphash #'(lambda (k v) (format t "~a => ~a~%" k v))
-         (word-hash-idf "habr/post171335.txt" "habr/"))
+
+(mapcar #'(lambda (x)
+            (let ((file (car x))
+                  (hash (cdr x)))
+              (format t "~%~%:::::::::::::::~A~%" file)
+              (maphash #'(lambda (k v)
+                           (format t "~a => ~a~%" k v))
+                       hash)))
+        (word-hash-idf #P"/home/feolan/search/habr/post171335.txt" "habr/"))
 
 
