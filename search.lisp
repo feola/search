@@ -160,45 +160,25 @@
             (recur-files path))
     res))
 
-(let ((x (format nil "~{~A~^ ~}"
-                 (word-list "habr/post171335.txt"))))
-  (print (subseq x (- (search "ход" x) 0))))
+;; (let ((x (format nil "~{~A~^ ~}"
+;;                  (word-list "habr/post171335.txt"))))
+;;   (print (subseq x (- (search "ход" x) 0))))
 
-(let ((x "ход")
-      (y "ход"))
-  (if (and
-       (equal 0 (search x y))
-       (equal (length x) (length y)))
-      t
-      nil))
+;; (let ((x "ход")
+;;       (y "ход"))
+;;   (if (and
+;;        (equal 0 (search x y))
+;;        (equal (length x) (length y)))
+;;       t
+;;       nil))
 
 ;; (files-with-word "ваша" "habr/")
-
-;; 1-ый вариант
-;; (defun word-hash-idf (file path)
-;;   "Определить idf"
-;;   ;; создать хеш-таблицу со списком слов с значением idf
-;;   ;; чтобы найти idf, необходимо разделить общее количество файлов
-;;   ;; на количество файлов, в которых встречается слово
-;;   (let ((result (make-hash-table :test #'equal)))
-;;     (mapcar #'(lambda (x)
-;;                 (setf (gethash x result)
-;;                       (if (not (equal (files-with-word x path) 0))
-;;                           (float
-;;                            (/ (length (recur-files path)) (files-with-word x path))))))
-;;             (word-list file))
-;;     result))
-
-
-
-
 
 ;; (files-with-word "л" (mapcar #'(lambda (x) ;; список точечных пар (файл . хэш-таблица)
 ;;                                       (cons x (word-hash-tf x)))
 ;;                                   (recur-files "habr/")))
 
 
-;; 2-ой вариант
 (defun word-hash-idf (file path)
   "Определить idf"
   ;; создать хеш-таблицу со списком слов с значением idf
@@ -225,8 +205,8 @@
                     (maphash #'(lambda (word tf)
                                  (setf (gethash word res)
                                        (float
-                                        (/ (length files)
-                                           (files-with-word word tfs)))))
+                                        (log (/ (length files)
+                                           (files-with-word word tfs))))))
                              hash)
                     (cons file res)))
               tfs))))
