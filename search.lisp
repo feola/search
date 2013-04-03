@@ -221,4 +221,25 @@
                        hash)))
         (word-hash-idf #P"/home/feolan/search/habr/post171335.txt" "habr/"))
 
+;; BM25
+;; количественная оценка релевантности файла в отношении поискового запроса
+
+(defconstant *k1* 2)
+(defconstant *b* 0.75)
+"Задаются свободные коэффициенты"
+
+(defun bm (word file path)
+  (mapcar #'(lambda (x)
+              (/
+               (* (gethash word (cdr x))
+                  (gethash word (word-hash-tf file))
+                  (+ *k1* 1))
+               (+ (gethash word (word-hash-tf file))
+                  (* *k1*
+                     (- 1
+                        (+ *b*
+                           (* *b*
+                              (/ (length (word-list file))
+                                 ("средняя длина файла в папке")))))))))
+               (word-hash-idf file path)))
 
