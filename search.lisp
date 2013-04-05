@@ -228,54 +228,75 @@
 (defconstant *b* 0.75)
 "Задаются свободные коэффициенты"
 
+
+(defmacro get-hash-val-or-zero-if-not-exists (val form &body body)
+  (let ((present (gensym "PRESENT")))
+    `(multiple-value-bind (,val ,present)
+         ,form
+       (unless ,present (setf ,val 0))
+       ,@body)))
+
+;; (macroexpand-1
+;;  '(get-hash-val-or-zero-if-not-exists
+;;    idf
+;;    (gethash word (cdr x))
+;;    (+ 1 2)))
+
 (defun bm (word file path)
   "Определить bm25"
+  ;; Берём мапкар от результата вызова функции (word-hash-idf file path) -
+  ;; это список точечных пар (файл.хеш-таблица-идф)
+  ;; нам надо получить список точечных пар (файл.бм)
   (mapcar #'(lambda (x)
-              (cons (car x)
-                    (/
-                     (* (gethash word (cdr x))
-                        (gethash word (word-hash-tf file))
-                        (+ *k1* 1))
-                     (+ (gethash word (word-hash-tf file))
-                        (* *k1*
-                           (+
-                            (- 1 *b*)
-                            (* *b*
-                               (/ (length (word-list file))
-                                  (/
-                                   (apply #'+
-                                          (mapcar #'(lambda (y) (length (word-list y)))
-                                                  (recur-files path)))
-                                   (length (recur-files path)))))))))))
-              (word-hash-idf file path)))
+              ;; Итак, с помощью мапкар применяем к исходным точечным парам функцию
+              ;; - берём точечную пару, и соединяем её car (название файла) с величиной bm
+              (get-hash-val-or-zero-if-not-exists idf (gethash word (cdr x))
+                (get-hash-val-or-zero-if-not-exists tf (gethash word (word-hash-tf file))
+                  (cons
+                   (car x)
+                   (/
+                    ;; Числитель:
+                    ;; - ищем слово в хеш таблице идф - получаем идф
+                    ;; - ищем слово в хеш таблице тф - получаем тф
+                    ;; - к к1 прибавляем 1
+                    ;; - все три величины перемножаем
+                    (* idf tf (+ *k1* 1))
+                    ;; Знаменатель:
+                    ;; - ищем слово в хеш таблице тф - получаем тф
+                    ;; - к тф прибавляем произведение к1 на большую скобку
+                    ;; - в этой скобке складываем (1-b) и произведение b на дробь
+                    ;; - дробь - это деление количества слов в документе на среднюю длину
+                    ;; документа в папке
+                    ;; количество слов в документе - это (length (word-list y))
+                    ;; средняя длина документа - это сумма длин всех документов разделить на
+                    ;; общее количество документов в папке
+                    (+ tf
+                       (* *k1*
+                          (+
+                           (- 1 *b*)
+                           (* *b*
+                              (/ (length (word-list file))
+                                 (/
+                                  (apply #'+
+                                         (mapcar #'(lambda (y) (length (word-list y)))
+                                                 (recur-files path)))
+                                  (length (recur-files path)))))))))))))
+          (word-hash-idf file path)))
 
 ;; Комментарии для rigidus:
-;; 1. Берём мапкар от результата вызова функции (word-hash-idf file path) -
-;; это список точечных пар (файл.хеш-таблица-идф)
-;; нам надо получить список точечных пар (файл.бм)
-;; 2. Итак, с помощью мапкар применяем к исходным точечным парам функцию
-;; - берём точечную пару, и соединяем её car (название файла) с величиной вм
+;; 2.
 ;; 3. Величина бм определяется по формуле, поэтому дальше идёт подстановка
 ;; значений в формулу:
-;; Числитель:
-;; - ищем слово в хеш таблице идф - получаем идф
-;; - ищем слово в хеш таблице тф - получаем тф
-;; - к к1 прибавляем 1
-;; - все три величины перемножаем
-;; Знаменатель:
-;; - ищем слово в хеш таблице тф - получаем тф
-;; - к тф прибавляем произведение к1 на большую скобку
-;; - в этой скобке складываем (1-b) и произведение b на дробь
-;; - дробь - это деление количества слов в документе на среднюю длину
-;; документа в папке
-;; количество слов в документе - это (length (word-list y))
-;; средняя длина документа - это сумма длин всех документов разделить на
-;; общее количество документов в папке
 
-(bm "на" "habr/post171335.txt" "habr/")
+(bm "код" "habr/post171335.txt" "habr/")
 
-(setf a (gethash "на" (word-hash-tf "habr/post171335.txt")))
+(setf a (gethash "код" (word-hash-tf "habr/post171335.txt")))
 
-(setf b (gethash "на" (cdr (car (word-hash-idf "habr/post171335.txt" "habr/")))))
+(setf b (gethash "код" (cdr (car (word-hash-idf "habr/post171335.txt" "habr/")))))
 
 (* a b)
+
+
+(maphash #'(lambda (k v)
+             (print (list k v)))
+         (cdar (word-hash-idf "habr/post171335.txt" "habr/")))
